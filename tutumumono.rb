@@ -26,7 +26,7 @@ class User
       user
     end
   end
-  
+
   def save_to_db
     if id.nil? || email.nil?
       puts "保存に失敗しました: id=#{id.inspect}, email=#{email.inspect}"
@@ -36,11 +36,11 @@ class User
   end
 end
 
-10.times do
-  user = User.create(id: rand(1..10)) # 失敗したらnilが返る
-  user.save_to_db 
-  puts user.inspect
-end
+# 10.times do
+#   user = User.create(id: rand(1..10)) # 失敗したらnilが返る
+#   user.save_to_db 
+#   puts user.inspect
+# end
 
 class MUser
   include Dry::Monads[:result]
@@ -65,11 +65,7 @@ class MUser
         new(id: nil, email: nil)
       end
 
-    if user.id.nil? || user.email.nil?
-      Failure(user)
-    else
-      Success(user)
-    end
+    user.id.nil? || user.email.nil? ? Failure(user) : Success(user)
   end
 end
 

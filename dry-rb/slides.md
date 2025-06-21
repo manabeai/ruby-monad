@@ -15,6 +15,12 @@ title: dry-rb入門
 mdc: true
 ---
 
+---
+
+# 関数型まつり行ってきました
+
+---
+
 # dry-rb入門
 
 関数型プログラミングをRubyで実現するツールキット
@@ -92,19 +98,158 @@ end
 実行すると...
 
 ---
+layout: center
+---
 
 # インスタンス化できなかった理由を呼び出し元で知りたい
 
-<v-clicks>
-- nilを返すだけでは**どの値がnilだったか分からない**
-- デバッグが困難
-- エラーの詳細な情報が失われる
-</v-clicks>
+---
+
+# 方法1. エラーにする
+
+```ruby
+class MissingIdError < StandardError; end
+class MissingEmailError < StandardError; end
+
+class User
+  def self.create(id:)
+    user = # 省略
+
+    raise MissingIdError, "User ID cannot be nil" if user.id.nil?
+    raise MissingEmailError, "User email cannot be nil" if user.email.nil?
+    user
+  end
+end
+```
+
+## 問題点
+- **ビジネスロジックで発生しうる例外はErrorとして扱うべきではない**
+- **どんどん複雑になる** - 例外が増えるとコードが読みにくくなる
 
 ---
+
+# 2. 結果をタプル(風)で返す
+
 ```ruby
+class User
+  def self.create(id:)
+    user = # 省略
+    
+    return [:error, :missing_id] if user.id.nil?
+    return [:error, :missing_email] if user.email.nil?
+    
+    [:ok, user]
+  end
+end
+
+# 使用例
+status, result = User.create(id: 1)
+case status
+when :ok
+  result.save_to_db
+when :error
+  puts "エラー: #{result}"
+end
+```
+
+<v-click>
+
+### 問題点
+- **そもそもRubyにタプルはない**
+- **`知るべきこと` が増える**
+  - 配列のどちらが補足情報か
+  - シンボルの値は何か
+- **エラーの詳細情報が限定的** - シンボルだけで足りる？
+
+</v-click>
+
+---
+
+# Dry-monadsを使って戻り値を`包む`
+```ruby
+class MUser
+  include Dry::Monads[:result]
+  extend Dry::Monads[:result]  
+  attr_reader :id, :email
+
+  def initialize(id:, email:)
+    @id = id
+    @email = email
+  end
+
+  def self.create(id:)
+    r = rand
+    user = # 省略
+
+    user.id.nil? || user.email.nil? ? Failure(user) : Success(user)
+  end
+end
+---
+
+# 実行結果
+
+```ruby
+# 10回実行した結果
+10.times do
+  begin
+    user = User.create(id: rand(1..10))
+    puts "成功: id=#{user.id}, email=#{user.email}"
+  rescue MissingIdError => e
+    puts "エラー: #{e.message}"
+  rescue MissingEmailError => e
+    puts "エラー: #{e.message}"
+  end
+end
+```
+
+<v-click>
 
 ```
+成功: id=id7, email=example7@example.com
+エラー: User email cannot be nil
+エラー: User ID cannot be nil
+エラー: User email cannot be nil
+成功: id=id3, email=example3@example.com
+エラー: User ID cannot be nil
+エラー: User email cannot be nil
+成功: id=id9, email=example9@example.com
+エラー: User email cannot be nil
+エラー: User ID cannot be nil
+```
+
+</v-click>
+
+---
+
+# 例外を使った場合の問題点
+
+<v-clicks>
+
+- **例外はフロー制御には不適切** - 正常なビジネスロジックの一部を例外で制御
+- **パフォーマンスの問題** - 例外の生成・捕捉はコストが高い
+- **コードの可読性** - try-catchのネストが深くなりがち
+- **エラーの合成が困難** - 複数のエラーを扱いにくい
+- **型安全性の欠如** - どの例外が発生するかコンパイル時に分からない
+
+</v-clicks>
+
+<v-click>
+
+```ruby
+# 複数のAPI呼び出しで例外が散らかる例
+begin
+  user = User.create(id: 1)
+  profile = Profile.create(user_id: user.id)
+  settings = Settings.create(user_id: user.id)
+rescue MissingIdError => e
+  # どの処理で失敗したか？
+rescue MissingEmailError => e
+  # profileやsettingsは作成された？
+end
+```
+
+</v-click>
+
 ---
 
 # この実装の問題点
