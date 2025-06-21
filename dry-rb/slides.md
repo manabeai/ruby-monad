@@ -58,41 +58,88 @@ dry-rbは単一のライブラリではなく、それぞれ独立した**ライ
 
 ---
 
-# 主要なdry-rbライブラリ
+# つらいコード
 
-最も使用頻度の高いライブラリたち
+```ruby
+class User
+  attr_reader :id, :email
+  def initialize(id:, email:)
+    @id = id
+    @email = email
+  end
+  
+  # @param id [Integer]
+  # @return [User | nil] User
+  def self.create(id:)
+    # フィールドはnilかもしれない...
+    user =
+      if rand < 0.25
+        new(id: "id#{id}", email: "example#{id}@example.com")
+      elsif rand < 0.5
+        new(id: "id#{id}", email: nil)
+      ...
 
-<div class="grid grid-cols-2 gap-4">
+    # どっちもnilじゃなければインスタンスを返す
+    if user.id.nil? || user.email.nil? ? nil : user
+  end
+  
+  def save_to_db
+    puts "保存しました: #{id}, #{email}"
+  end
+end
+```
 
-<div>
+実行すると...
 
-## Core Libraries
-- **dry-configurable** - 設定管理
-- **dry-container** - 依存性注入
-- **dry-auto_inject** - 自動依存性注入
-- **dry-initializer** - オブジェクト初期化
+---
 
-</div>
+# インスタンス化できなかった理由を呼び出し元で知りたい
 
-<div>
+<v-clicks>
+- nilを返すだけでは**どの値がnilだったか分からない**
+- デバッグが困難
+- エラーの詳細な情報が失われる
+</v-clicks>
 
-## Data Handling
-- **dry-validation** - データバリデーション
-- **dry-schema** - スキーマ定義
-- **dry-types** - 型システム
-- **dry-struct** - 不変構造体
+---
+```ruby
 
-</div>
+```
+---
 
-</div>
+# この実装の問題点
 
-<div class="mt-4">
+<v-clicks>
 
-## Functional Programming
-- **dry-monads** - モナドパターン
-- **dry-matcher** - パターンマッチング
+- **エラーハンドリングの欠如** - APIがnilを返してもそのまま保存
+- **データの整合性** - 不完全なデータ（nilを含む）が処理される
+- **暗黙的な失敗** - エラーが発生しても正常終了したように見える
+- **デバッグの困難性** - どこで失敗したか追跡しづらい
+- **テストの複雑化** - 成功/失敗の両方のケースを考慮する必要
 
-</div>
+</v-clicks>
+
+<br>
+
+<v-click>
+
+## よくある対処法の問題
+
+```ruby
+def fetch_data
+  ans1 = call_api
+  return nil unless ans1  # 早期リターンの連鎖
+  
+  ans2 = call_api
+  return nil unless ans2
+  
+  @data = [ans1, ans2]
+end
+```
+
+→ ネストが深くなり、エラーの詳細が失われる
+
+</v-click>
 
 ---
 
@@ -127,6 +174,54 @@ end
 result = UserService.new.get_user_email(123)
 result.success? # => true/false
 result.value!   # => user email or raises exception
+```
+
+</v-click>
+
+---
+
+# dry-monads - yield記法
+
+Do記法を使うとより直感的に書ける
+
+```ruby {all|1-3|5-11|13-19|all}
+require 'dry-monads'
+require 'dry/monads/do'
+
+class UserService
+  include Dry::Monads[:result]
+  include Dry::Monads::Do.for(:process_user)
+
+  def find_user(id)
+    user = User.find_by(id: id)
+    return Failure(:user_not_found) unless user
+    return Failure(:user_inactive) unless user.active?
+    Success(user)
+  end
+
+  def process_user(id)
+    user = yield find_user(id)           # 失敗したら自動的にFailureを返す
+    profile = yield fetch_profile(user)   # こちらも同様
+    settings = yield load_settings(user)  # 連続したyieldが可能
+    
+    Success({ user: user, profile: profile, settings: settings })
+  end
+end
+```
+
+<v-click>
+
+### 通常の書き方との比較
+
+```ruby
+# yieldなし
+find_user(id).bind do |user|
+  fetch_profile(user).bind do |profile|
+    load_settings(user).bind do |settings|
+      Success({ user: user, profile: profile, settings: settings })
+    end
+  end
+end
 ```
 
 </v-click>
