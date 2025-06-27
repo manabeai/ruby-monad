@@ -5,26 +5,17 @@ class: text-center
 highlighter: shiki
 lineNumbers: false
 info: |
-  ## dry-rb紹介
+  ## dry-rbで安全に副作用を扱おう
 
   関数型プログラミングの概念をRubyで実現するライブラリ群の紹介
 drawings:
   persist: false
 transition: slide-left
-title: dry-rb入門
+title: dry-rbで安全に副作用を扱おう
 mdc: true
 ---
 
----
-
-# 関数型まつり行ってきました
-
----
-
-# dry-rb入門
-
-関数型プログラミングをRubyで実現するツールキット
-
+# dry-rbで安全に副作用を扱おう
 <div class="pt-12">
   <span @click="$slidev.nav.next" class="px-2 py-1 rounded cursor-pointer" hover="bg-white bg-opacity-10">
     Press Space for next page <carbon:arrow-right class="inline"/>
@@ -45,7 +36,29 @@ mdc: true
 
 # dry-monadsとは？
 
+## 代数的データ型をRubyで
 
+dry-monadsは、関数型言語でおなじみの**代数的データ型**をRubyで扱えるようにするライブラリです。
+
+<div class="grid grid-cols-2 gap-8 mt-8">
+<div>
+
+### 提供される型
+
+- **Result[Success | Failure]**
+  - 処理の成功/失敗を表現
+- **Maybe[Some | None]**  
+  - 値の有無を表現
+- **Try[Value | Error]**
+  - 例外を値として扱う
+
+</div>
+<div>
+
+</div>
+</div>
+
+これらの型を使うことで、副作用を含む処理をいい感じに扱えるようになります。
 
 ---
 
@@ -73,14 +86,8 @@ class User
     # どっちもnilじゃなければインスタンスを返す
     if user.id.nil? || user.email.nil? ? nil : user
   end
-  
-  def save_to_db
-    puts "保存しました: #{id}, #{email}"
-  end
 end
 ```
-
-実行すると...
 
 ---
 layout: center
@@ -144,7 +151,6 @@ end
 - **`知るべきこと` が増える**
   - 配列のどちらが補足情報か
   - シンボルの値は何か
-- **エラーの詳細情報が限定的** - シンボルだけで足りる？
 
 </v-click>
 
@@ -168,9 +174,8 @@ class User
 end
 ```
 
-```ruby {2-3|13}
+```ruby {2|12}
 class User
-  include Dry::Monads[:result]
   extend Dry::Monads[:result]  
   attr_reader :id, :email
 
@@ -186,9 +191,8 @@ class User
 end
 ```
 
-```ruby {13|*}
+```ruby {12|*}
 class User
-  include Dry::Monads[:result]
   extend Dry::Monads[:result]  
   attr_reader :id, :email
 
@@ -202,22 +206,6 @@ class User
     user.id.nil? || user.email.nil? ? Failure(user) : Success(user)
   end
 end
-```
-
-Non-code blocks are ignored.
-
-```vue
-<!-- step 4 -->
-<script setup>
-const author = {
-  name: 'John Doe',
-  books: [
-    'Vue 2 - Advanced Guide',
-    'Vue 3 - Basic Guide',
-    'Vue 4 - The Mystery'
-  ]
-}
-</script>
 ```
 ````
 
@@ -244,7 +232,7 @@ Success(#<User:0x000073d6070dc0b8 @id="id4", @email="example4@example.com">)
 ```
 
 - 有効なオブジェクトなら`Success`で、無効なオブジェクトなら`Failure`で返す
-- タプルのように補足情報のためにシンボルを使う必要がない
+- タプルのように補足情報のためにマイルールを増やす必要がない
 ---
 
 # モナドの値を取り出す
@@ -299,35 +287,11 @@ end
 
 <v-click>
 
-### 別の書き方
-
-```ruby
-# fmapを使った短縮形
-result.fmap(&:save_to_db)
-      .or { |u| puts "失敗: #{u.inspect}" }
-
-# case文を使う方法
-case result
-when Success
-  result.value!.save_to_db
-when Failure
-  puts "失敗: #{result.failure.inspect}"
-end
-```
-
 </v-click>
 
 </div>
 
 </div>
-
----
-
-# もっと縮めて
-```ruby
-result = User.create(id: 1)
-result.fmap(&:save_to_db).or -> puts "作ろうと思ったけど作れませんでした : #{user.inspect}" 
-```
 
 ---
 
@@ -346,7 +310,23 @@ user.save_to_db
 
 ---
 
-# 感想とか
+# AIとの相性について考えたこと
+- 今のAIは自分で環境を作って開発ができる
+- が、API連携などの外部連携はAIはひとりではどうにもならない
+  - 外部連携がどういう性質を持ったものか...
+  - どのようなレスポンスが「失敗」なのか...
+
+---
+
+# dry-rbは情報に「文脈」を持たせる
+
+- **Success/Failure** - 単なる値ではなく、成功か失敗かという文脈を持つ
+- **エラーの詳細** - Failureに理由やコンテキストを含められる
+- AIが空気を読むための情報を提供できる！
+
+---
+
+# まとめ
 - **副作用と向き合う協力なツール**
 - **ActiveRecordとかでめっちゃ使いたくなる**
 - **AI開発ととても相性が良さそう**
