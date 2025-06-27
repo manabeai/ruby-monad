@@ -1,5 +1,10 @@
 name: Deploy pages
 on: push
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  
 jobs:
   deploy:
     runs-on: ubuntu-latest
