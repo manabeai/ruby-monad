@@ -5,17 +5,17 @@ class: text-center
 highlighter: shiki
 lineNumbers: false
 info: |
-  ## dry-rbで安全に副作用を扱おう
+  ## dry-monadsで安全に副作用を扱おう
 
   関数型プログラミングの概念をRubyで実現するライブラリ群の紹介
 drawings:
   persist: false
 transition: slide-left
-title: dry-rbで安全に副作用を扱おう
+title: dry-monadsで安全に副作用を扱おう
 mdc: true
 ---
 
-# dry-rbで安全に副作用を扱おう
+# dry-monadsで安全に副作用を扱おう
 <div class="pt-12">
   <span @click="$slidev.nav.next" class="px-2 py-1 rounded cursor-pointer" hover="bg-white bg-opacity-10">
     Press Space for next page <carbon:arrow-right class="inline"/>
@@ -26,7 +26,7 @@ mdc: true
   <button @click="$slidev.nav.openInEditor()" title="Open in Editor" class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
     <carbon:edit />
   </button>
-  <a href="https://github.com/dry-rb" target="_blank" alt="GitHub"
+  <a href="https://github.com/dry-monads" target="_blank" alt="GitHub"
     class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
     <carbon-logo-github />
   </a>
@@ -318,7 +318,7 @@ user.save_to_db
 
 ---
 
-# dry-rbは情報に「文脈」を持たせる
+# dry-monadsは情報に「文脈」を持たせる
 
 - **Success/Failure** - 単なる値ではなく、成功か失敗かという文脈を持つ
 - **エラーの詳細** - Failureに理由やコンテキストを含められる
